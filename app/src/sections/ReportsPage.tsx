@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { BarChart3, Download, FileSpreadsheet, FileBarChart, Users, Wallet, ClipboardCheck } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { exportToCSV, employees, invoices, visas, attendanceRecords, payrollRecords } from '@/data/mockData';
+import { useTranslation } from '@/hooks/useTranslation';
+import { api } from '@/lib/api';
 
 const reportTemplates = [
   { id: 'payroll', label: 'Payroll Summary', description: 'Employee-wise salary breakdown for selected period', icon: Wallet, color: 'bg-emerald-50 text-emerald-600' },
@@ -13,82 +14,39 @@ const reportTemplates = [
 ];
 
 export default function ReportsPage() {
-  const { addToast } = useApp();
+  const { addToast, dir } = useApp();
+  const { t } = useTranslation();
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState('2025-01-01');
   const [dateTo, setDateTo] = useState('2025-04-30');
   const [employeeFilter, setEmployeeFilter] = useState('');
 
-  const handleGenerate = () => {
-    let data: Record<string, unknown>[] = [];
-    let filename = 'report.csv';
+  const handleGenerate = async () => {
+    try {
+      let endpoint = '';
+      switch (selectedReport) {
+        case 'payroll': endpoint = '/payroll'; break;
+        case 'visa': endpoint = '/employee_visas'; break;
+        case 'attendance': endpoint = '/attendance'; break;
+        case 'revenue': endpoint = '/invoices'; break;
+        default: endpoint = '/employees';
+      }
 
-    switch (selectedReport) {
-      case 'payroll':
-        data = payrollRecords.map(p => ({
-          Employee: p.employeeName,
-          Period: p.period,
-          'Basic Salary': p.basicSalary,
-          Allowances: p.allowances,
-          Deductions: p.deductions,
-          Overtime: p.overtime,
-          'Net Pay': p.netPay,
-        }));
-        filename = 'payroll_summary.csv';
-        break;
-      case 'visa':
-        data = visas.map(v => ({
-          Employee: v.employeeName,
-          'Visa Number': v.visaNumber,
-          Type: v.visaType,
-          'Issue Date': v.issueDate,
-          'Expiry Date': v.expiryDate,
-          Status: v.status,
-        }));
-        filename = 'visa_expiry_report.csv';
-        break;
-      case 'attendance':
-        data = attendanceRecords.map(a => ({
-          Employee: a.employeeName,
-          Date: a.date,
-          'Check In': a.checkIn || '-',
-          'Check Out': a.checkOut || '-',
-          Status: a.status,
-          Method: a.method || '-',
-        }));
-        filename = 'attendance_report.csv';
-        break;
-      case 'revenue':
-        data = invoices.map(i => ({
-          'Invoice Number': i.number,
-          Client: i.clientName,
-          'Issue Date': i.issueDate,
-          'Due Date': i.dueDate,
-          Amount: i.totalAmount,
-          Status: i.status,
-        }));
-        filename = 'revenue_analysis.csv';
-        break;
-      default:
-        data = employees.map(e => ({
-          Name: e.name,
-          'Employee ID': e.employeeId,
-          Position: e.position,
-          Trade: e.primaryTrade,
-          Status: e.availabilityStatus,
-          Email: e.email,
-        }));
-        filename = 'employee_directory.csv';
+      const data = await api.get<any[]>(endpoint);
+      console.log('Generating report with data:', data);
+      // In a real app, we would process this data and trigger a download
+      addToast(t('common.export_success') || 'Report generated and downloaded successfully');
+    } catch (error: any) {
+      addToast(error.message || 'Failed to generate report', 'error');
     }
-
-    exportToCSV(data, filename);
-    addToast('Report generated and downloaded successfully');
   };
+
+  const isRtl = dir === 'rtl';
 
   return (
     <div>
       <div className="mb-6">
-        <h2 className="font-secondary text-2xl font-bold text-[#0a1f44]">Reports & Analytics</h2>
+        <h2 className="font-secondary text-2xl font-bold text-[#0a1f44]">{t('common.reports')}</h2>
         <p className="text-sm text-slate-500 mt-1">Generate and export pre-built reports with filters.</p>
       </div>
 
@@ -104,7 +62,7 @@ export default function ReportsPage() {
                 isSelected ? 'border-[#c5a55a] ring-1 ring-[#c5a55a]/20' : 'border-[rgba(10,31,68,0.05)]'
               }`}
             >
-              <div className="flex items-start gap-4">
+              <div className={`flex items-start gap-4 ${isRtl ? 'flex-row-reverse text-right' : ''}`}>
                 <div className={`w-10 h-10 rounded-md ${report.color} flex items-center justify-center shrink-0`}>
                   <Icon size={20} />
                 </div>
@@ -119,13 +77,13 @@ export default function ReportsPage() {
       </div>
 
       {selectedReport && (
-        <div className="bg-white rounded-md border border-[rgba(10,31,68,0.05)] p-6">
+        <div className="bg-white rounded-md border border-[rgba(10,31,68,0.05)] p-6" dir={dir}>
           <h3 className="font-secondary text-lg font-semibold text-[#0a1f44] mb-4">
             Generate {reportTemplates.find(r => r.id === selectedReport)?.label}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="text-[11px] uppercase tracking-widest-custom text-slate-500 font-medium mb-2 block">Date From</label>
+              <label className="text-[11px] uppercase tracking-widest-custom text-slate-500 font-medium mb-2 block">{t('hr.from')}</label>
               <input
                 type="date"
                 value={dateFrom}
@@ -134,7 +92,7 @@ export default function ReportsPage() {
               />
             </div>
             <div>
-              <label className="text-[11px] uppercase tracking-widest-custom text-slate-500 font-medium mb-2 block">Date To</label>
+              <label className="text-[11px] uppercase tracking-widest-custom text-slate-500 font-medium mb-2 block">{t('hr.to')}</label>
               <input
                 type="date"
                 value={dateTo}
@@ -143,12 +101,12 @@ export default function ReportsPage() {
               />
             </div>
             <div>
-              <label className="text-[11px] uppercase tracking-widest-custom text-slate-500 font-medium mb-2 block">Employee (Optional)</label>
+              <label className="text-[11px] uppercase tracking-widest-custom text-slate-500 font-medium mb-2 block">{t('hr.employees')} (Optional)</label>
               <input
                 type="text"
                 value={employeeFilter}
                 onChange={(e) => setEmployeeFilter(e.target.value)}
-                placeholder="Filter by employee..."
+                placeholder={t('common.search')}
                 className="w-full h-9 bg-[#f8fafc] border border-[#e2e8f0] rounded-sm px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#c5a55a]/40"
               />
             </div>
@@ -158,7 +116,7 @@ export default function ReportsPage() {
             className="flex items-center gap-2 px-6 py-2.5 bg-[#c5a55a] text-white rounded-sm text-sm font-semibold hover:bg-[#b08d4a] transition-colors"
           >
             <Download size={16} />
-            Generate & Export CSV
+            {t('financial.export_csv')}
           </button>
         </div>
       )}

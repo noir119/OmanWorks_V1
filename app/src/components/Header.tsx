@@ -1,8 +1,10 @@
-import { Search, Bell, HelpCircle, Menu } from 'lucide-react';
+import { Search, Bell, HelpCircle, Menu, Globe } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function Header() {
   const { sidebarOpen, setSidebarOpen } = useApp();
+  const { t, language, setLanguage } = useTranslation();
 
   return (
     <header className="fixed top-0 left-0 right-0 h-16 bg-[#0a1f44] flex items-center justify-between px-4 z-50">
@@ -31,13 +33,20 @@ export default function Header() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={16} />
           <input
             type="text"
-            placeholder="Search employees, projects, invoices..."
+            placeholder={t('common.search')}
             className="w-full h-9 bg-white/10 text-white placeholder:text-white/40 rounded-md pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#c5a55a]/40"
           />
         </div>
       </div>
 
       <div className="flex items-center gap-3">
+        <button 
+          onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
+          className="flex items-center gap-2 px-3 py-1.5 text-white/60 hover:text-white transition-colors text-xs font-medium bg-white/5 rounded-md border border-white/10"
+        >
+          <Globe size={14} />
+          {language === 'en' ? 'العربية' : 'English'}
+        </button>
         <button className="relative p-2 text-white/60 hover:text-white transition-colors">
           <Bell size={18} />
           <span className="absolute top-1 right-1 w-2 h-2 bg-[#c5a55a] rounded-full" />
